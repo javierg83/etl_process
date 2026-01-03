@@ -63,18 +63,22 @@ class DocumentStartNode:
         if not base_path:
             raise ValueError("No se encontró 'base_path' en el state")
 
+        # --- path documento ---
+        document_path = os.path.join(base_path, raw_name)
         # --- Normalización ---
-        normalized_name = DocumentStartNode._normalizar_nombre(filename)
+        document_id = DocumentStartNode._normalizar_nombre(filename)
         #print(f"🧹 Nombre normalizado: {normalized_name}")
 
         # --- Crear directorio ---
-        document_dir = os.path.join(base_path, normalized_name)
-        os.makedirs(document_dir, exist_ok=True)
-        #print(f"📁 Directorio creado/verificado: {document_dir}")
+        document_folder = os.path.join(base_path, document_id)
+        os.makedirs(document_folder, exist_ok=True)
 
         # --- Mutar state ---
-        state["normalized_name"] = normalized_name
-        state["document_dir"] = document_dir
+
+        state["document_id"] = document_id
+        state["document_filename"] = filename
+        state["document_path"] = document_path
+        state["document_folder"] = document_folder
         state["status"] = "ok"
 
         return state

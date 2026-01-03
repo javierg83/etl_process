@@ -18,10 +18,6 @@ class DocumentExtractorNode:
     def execute(state: dict) -> dict:
         try:
 
-
-            
-
-
             return DocumentExtractorNode._run(state)
         except Exception as e:
             state["status"] = "failed"
@@ -37,23 +33,22 @@ class DocumentExtractorNode:
         for k, v in state.items():
             print(f"   - {k}: {v}")
 
-       
+        document_filename = state.get("document_filename") 
+        document_path = state.get("document_path")          # directorio trabajo
+        document_id = state.get("document_id")              # directorio trabajo
+        document_folder = state.get("document_folder")      # directorio trabajo   
+        #os.makedirs(document_folder, exist_ok=True)         
 
-        base_path = state.get("base_path")              # directorio trabajo
-        filename = state.get("filename")                # nombre archivo
-        doc_id = state['normalized_name']               # nombre del archivo sin extension (identifica directorio)
-        file_path = os.path.join(base_path, filename)   # direcion del archivo a procesar
-
-        resultados = DocumentExtractorNode.extraer_data(base_path,doc_id,file_path)
+        resultados = DocumentExtractorNode.extraer_data(document_id,document_path)
 
         try:
-            print(f"[guardar_archivos] → Guardando JSON en {doc_id}_resultado_paginas.json")
-            DocumentExtractorNode.guardar_resultados(resultados, base_path, nombre_base=doc_id)
+            print(f"[guardar_archivos] → Guardando JSON en {document_id}_resultado_paginas.json")
+            DocumentExtractorNode.guardar_resultados(resultados, document_folder, nombre_base=document_id)
 
             # Guardar también un JSON por cada página (requerido por run_embedding_batch)
             for pagina in resultados:
                 num_pagina = pagina.get("pagina", "desconocida")
-                archivo_pagina = os.path.join(base_path, f"{doc_id}_pag_{num_pagina}.json")
+                archivo_pagina = os.path.join(document_folder, f"{document_id}_pag_{num_pagina}.json")
                 with open(archivo_pagina, "w", encoding="utf-8") as f:
                     json.dump(pagina, f, ensure_ascii=False, indent=2)
                 print(f"[📄] Archivo de página guardado: {archivo_pagina}")
@@ -68,7 +63,7 @@ class DocumentExtractorNode:
             num_pagina = pagina["pagina"]
             print(f"[embedding] → Procesando página {num_pagina}")
             contenido_pagina = ""
-            key_base = f"doc_raw_page:{doc_id}:p{num_pagina}"
+            key_base = f"doc_raw_page:{document_id}:p{num_pagina}"
 
             elementos = pagina.get("elementos", [])
             print(f"[embedding]   • Elementos detectados: {len(elementos)}")
@@ -96,7 +91,7 @@ class DocumentExtractorNode:
                     contenido_pagina += texto + "\n"
                 except Exception as e:
                     print(f"[❌ error] Fallo embedding en p{num_pagina}_e{idx+1}: {e}")
-                    DocumentExtractorNode.registrar_error_reproceso(doc_id, num_pagina, idx+1)
+                    DocumentExtractorNode.registrar_error_reproceso(document_id, num_pagina, idx+1)
 
             if contenido_pagina.strip():
                 try:
@@ -110,7 +105,7 @@ class DocumentExtractorNode:
                     print(f"[embedding] ✅ Página {num_pagina} embebida")
                 except Exception as e:
                     print(f"[❌ error] Fallo embedding página {num_pagina}: {e}")
-                    DocumentExtractorNode.registrar_error_reproceso(doc_id, num_pagina)
+                    DocumentExtractorNode.registrar_error_reproceso(document_id, num_pagina)
 
         if False:
             if texto_documento.strip():
@@ -118,7 +113,7 @@ class DocumentExtractorNode:
                     emb_doc = generar_embedding(texto_documento)
                     DocumentExtractorNode.redis_client.hset(f"doc_raw:{nombre_sin_extension}", mapping={
                         "nombre_original": nombre_archivo,
-                        "doc_id": nombre_sin_extension,
+                        "document_id": nombre_sin_extension,
                         "texto": texto_documento.strip(),
                         "embedding": json.dumps(emb_doc),
                         "pages_count": len(resultados),
@@ -136,24 +131,24 @@ class DocumentExtractorNode:
             return len(resultados)
 
     @staticmethod
-    def registrar_error_reproceso(doc_id, pagina, elemento=None):
-        carpeta = os.path.join("archivos_texto", doc_id)
+    def registrar_error_reproceso(document_id, pagina, elemento=None):
+        carpeta = os.path.join("archivos_texto", document_id)
         os.makedirs(carpeta, exist_ok=True)
 
         archivo_log = os.path.join(carpeta, "log_errores.txt")
         with open(archivo_log, "a", encoding="utf-8") as f:
             if elemento:
-                f.write(f"{doc_id}:p{pagina}_e{elemento}\n")
+                f.write(f"{document_id}:p{pagina}_e{elemento}\n")
             elif pagina == -1:
-                f.write(f"{doc_id}:DOCUMENTO\n")
+                f.write(f"{document_id}:DOCUMENTO\n")
             else:
-                f.write(f"{doc_id}:p{pagina}\n")
+                f.write(f"{document_id}:p{pagina}\n")
 
     @staticmethod
-    def guardar_resultados(resultados, carpeta_destino, nombre_base="documento"):
-        json_path = os.path.join(carpeta_destino, f"{nombre_base}_resultado_paginas.json")
-        txt_path = os.path.join(carpeta_destino, f"{nombre_base}.txt")
-        token_path = os.path.join(carpeta_destino, f"{nombre_base}_tokens.txt")
+    def guardar_resultados(resultados, document_folder, nombre_base="documento"):
+        json_path = os.path.join(document_folder, f"{nombre_base}_resultado_paginas.json")
+        txt_path = os.path.join(document_folder, f"{nombre_base}.txt")
+        token_path = os.path.join(document_folder, f"{nombre_base}_tokens.txt")
 
         with open(json_path, "w", encoding="utf-8") as f_json, \
             open(txt_path, "w", encoding="utf-8") as f_txt, \
@@ -199,22 +194,21 @@ class DocumentExtractorNode:
 
 
     @staticmethod
-    def extraer_data(base_path,doc_id,file_path):
+    def extraer_data(document_id,document_path):
 
         resultados = []
-        with fitz.open(file_path) as doc:
+        with fitz.open(document_path) as doc:
             total_paginas = doc.page_count
 
             indices = list(range(total_paginas))
             print(f"[process_pages] → PDF tiene {total_paginas} páginas. Leyendo indices: {indices}")
 
-            indices = [0]
             for i in indices:
                 print(f"=== process_pages → Procesando {i + 1}/{total_paginas} (página real {i + 1}) ===")
 
                 try:
-                    print(f"[Extractor] ({i + 1}) → Iniciando análisis de página {i + 1} de '{file_path}'")
-                    elementos, raw, tokens_in, tokens_out = analizar_pagina(file_path, i)
+                    print(f"[Extractor] ({i + 1}) → Iniciando análisis de página {i + 1} de '{document_path}'")
+                    elementos, raw, tokens_in, tokens_out = analizar_pagina(document_path, i)
 
                     resultado = {
                         "pagina": i + 1,
@@ -230,7 +224,7 @@ class DocumentExtractorNode:
                         if texto:
                             emb = generar_embedding(texto)
                             if emb:
-                                clave = f"doc_raw_page:{doc_id}:p{i+1}_e{idx+1}"
+                                clave = f"doc_raw_page:{document_id}:p{i+1}_e{idx+1}"
                                 guardar_en_redis(clave, {
                                     "embedding": json.dumps(emb),
                                     "texto": texto,
@@ -244,7 +238,7 @@ class DocumentExtractorNode:
                     if texto_pagina.strip():
                         emb_pagina = generar_embedding(texto_pagina.strip())
                         if emb_pagina:
-                            clave = f"doc_raw_page:{doc_id}:p{i+1}_full"
+                            clave = f"doc_raw_page:{document_id}:p{i+1}_full"
                             guardar_en_redis(clave, {
                                 "embedding": json.dumps(emb_pagina),
                                 "texto": texto_pagina.strip(),
@@ -258,14 +252,14 @@ class DocumentExtractorNode:
         return resultados
                     
 
-
-  
     @staticmethod
     def test():
         test_state = {
-            "base_path": "D:/sodimac/storage/LIC-001",
-            "filename": "1-Bases_5300-44-L125__19.pdf",
-            "normalized_name":"1-Bases_5300-44-L125__19"
+
+            "document_path": "D:/sodimac/storage/LIC-001/1-Bases_5300-44-L125__19.pdf",
+            "document_folder": "D:/sodimac/storage/LIC-001/1_bases_5300_44_l125__19",
+            "document_filename": "1-Bases_5300-44-L125__19.pdf",
+            "document_id":"1_bases_5300_44_l125__19"
         }
 
         result = DocumentExtractorNode.execute(test_state)
