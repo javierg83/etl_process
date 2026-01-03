@@ -13,7 +13,7 @@ def document_start_node(state: dict) -> dict:
 
 
 def document_review_node(state: dict) -> dict:
-    print("➡️ Entrando al subgrafo document: review")
+    print("➡️ Entrando al subgrafo document: review (desactivo por ahora)")
     return DocumentReviewNode.execute(state)
 
 

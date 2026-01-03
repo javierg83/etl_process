@@ -28,17 +28,29 @@ def cleanup_node(state: dict) -> dict:
     return CleanupNode.execute(state)
 
 
+def route_after_start(state: dict) -> str:
+    return "cost" if state.get("status") == "ok" else END
+
+
 def build_graph():
     graph = StateGraph(dict)
 
-    # 👇 ahora usamos las funciones explícitas
     graph.add_node("start", start_node)
     graph.add_node("cost", cost_node)
     graph.add_node("process_documents", process_documents_node)
     graph.add_node("cleanup", cleanup_node)
 
     graph.set_entry_point("start")
-    graph.add_edge("start", "cost")
+
+    graph.add_conditional_edges(
+        "start",
+        route_after_start,
+        {
+            "cost": "cost",
+            END: END,
+        },
+    )
+
     graph.add_edge("cost", "process_documents")
     graph.add_edge("process_documents", "cleanup")
     graph.add_edge("cleanup", END)
