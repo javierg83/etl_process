@@ -1,5 +1,6 @@
 # src/graph/etl/nodes/start.py
 
+from src.config import STORAGE,REPOSITORY
 import os
 import shutil
 import sqlite3
@@ -62,18 +63,10 @@ class StartNode:
 
     @staticmethod
     def _run(state: dict) -> dict:
-        """
-        Implementación principal del nodo Start.
-        """
-        repository_path = state.get("repository_path")
-        storage_path = state.get("storage_path")
-
-        if not repository_path or not storage_path:
-            raise RuntimeError("repository_path o storage_path no definidos en state")
-
+        
         subdirs = [
-            d for d in os.listdir(repository_path)
-            if os.path.isdir(os.path.join(repository_path, d))
+            d for d in os.listdir(REPOSITORY)
+            if os.path.isdir(os.path.join(REPOSITORY, d))
         ]
 
         if not subdirs:
@@ -83,8 +76,8 @@ class StartNode:
         licitation_id = subdirs[0]
         state["licitation_id"] = licitation_id
 
-        src_dir = os.path.join(repository_path, licitation_id)
-        dst_dir = os.path.join(storage_path, licitation_id)
+        src_dir = os.path.join(REPOSITORY, licitation_id)
+        dst_dir = os.path.join(STORAGE, licitation_id)
 
         #print(f"🆔 Licitación seleccionada: {licitation_id}")
 

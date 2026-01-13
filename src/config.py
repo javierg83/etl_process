@@ -1,10 +1,18 @@
 # config.py
+import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
-import os
 
-# Clave OpenAI
+REPOSITORY = os.getenv("REPOSITORY")
+if not REPOSITORY:
+    raise RuntimeError("REPOSITORY no definido en .env")
+
+STORAGE = os.getenv("STORAGE")
+if not STORAGE:
+    raise RuntimeError("STORAGE no definido en .env")
+
 API_KEY = os.getenv("OPENAI_API_KEY")
 if not API_KEY:
     raise ValueError("La variable OPENAI_API_KEY no está definida en el entorno")

@@ -33,11 +33,10 @@ class DocumentExtractorNode:
         for k, v in state.items():
             print(f"   - {k}: {v}")
 
-        document_filename = state.get("document_filename") 
-        document_path = state.get("document_path")          # directorio trabajo
-        document_id = state.get("document_id")              # directorio trabajo
-        document_folder = state.get("document_folder")      # directorio trabajo   
-        #os.makedirs(document_folder, exist_ok=True)         
+        document_filename = state.get("document_filename")  # nombre del documento (original y extension)
+        document_path = state.get("document_path")          # ruta del documento
+        document_id = state.get("document_id")              # nombre documento sin extension y transformado
+        document_folder = state.get("document_folder")      # directorio trabajo del documento 
 
         resultados = DocumentExtractorNode.extraer_data(document_id,document_path)
 
